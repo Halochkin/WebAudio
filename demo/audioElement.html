@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Audio api Audio element</title>
+</head>
+<body>
+<audio src="../audio/firestarter.mp3"></audio>
+<button onclick="playAudio()">PLAY</button>
+<script>
+  const audioFile = document.querySelector("audio");
+  let audioContext;
+  if (window.AudioContext)
+    audioContext = new AudioContext();
+
+  const source = audioContext.createMediaElementSource(audioFile);
+  source.connect(audioContext.destination);
+
+  function playAudio() {
+    audioContext.resume();
+    audioFile.play();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>bubble level</title>
+    <style>
+
+
+        #topAngle {
+            margin-left: 275px;
+        }
+
+        #bottomAngle {
+            margin-left: 275px;
+            margin-top: 520px;
+        }
+
+        #leftAngle {
+            transform: rotate(-90deg);
+            position: absolute;
+            top: 265px;
+        }
+
+        #rightAngle {
+            transform: rotate(90deg);
+            position: absolute;
+            top: 265px;
+            left: 565px;
+        }
+
+        .deg {
+            font-size: 30px;
+        }
+
+        .deg::after {
+            content: "°";
+        }
+
+        #xAxis {
+            height: 20px;
+            width: 500px;
+            margin-left: 50px;
+            margin-top: 260px;
+            background-color: #b7cd49;
+            position: absolute;
+        }
+
+        #yAxis {
+            height: 500px;
+            width: 20px;
+            margin-left: 275px;
+            position: absolute;
+            /*margin-top: 50px;*/
+            background-color: #b7cd49;
+        }
+
+        #bubbleX {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background-color: red;
+            position: absolute;
+            left: 225px;
+            z-index: 1;
+        }
+
+        #bubbleY {
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background-color: blue;
+            position: absolute;
+            top: 225px;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+<button onclick=" playtones(680, 980, 300, 1);">Play</button>
+<div class="deg" id="leftAngle">0</div>
+<div id="xAxis">
+    <div id="bubbleX"></div>
+</div>
+
+<div class="deg" id="rightAngle">0</div>
+
+
+<div class="deg" id="topAngle">0</div>
+<div id="yAxis">
+    <div id="bubbleY"></div>
+</div>
+<div class="deg" id="bottomAngle">0</div>
+
+
+<script>
+  let bubbleX = document.querySelector("#bubbleX");
+  let bubbleY = document.querySelector("#bubbleY");
+  let topAngle = document.querySelector("#topAngle");
+  let bottomAngle = document.querySelector("#bottomAngle");
+  let leftAngle = document.querySelector("#leftAngle");
+  let rightAngle = document.querySelector("#rightAngle");
+
+
+  let bubbleCenterX = undefined;
+  let bubbleCenterY = undefined;
+  let supportVoice = false;
+  let bubbleHandler = e => bubbleLevel(e);
+
+
+  let base = 680;  //hz, base signal
+
+
+  var context = new AudioContext();
+  var tones = [], gain1, gain2, oscillator;
+
+
+  let osc1dur = 3;                                      // sounds duration
+  let osc2dur = 1;
+  let delay = 1;                                       // delay between sounds start time
+
+
+  function getOscillator(tone, type) {
+    let oscillator = context.createOscillator();           // create new oscillator
+    oscillator.frequency.value = tone;                     // set frequency (mhz)
+    oscillator.type = type;                                // set a type (sine/square/triangle..)
+    return oscillator;                                     // return oscillator with a properties
+  }
+
+  function getGain(osc) {
+    let gain = context.createGain();                      // create new gain  (level of sound)
+    gain.connect(context.destination);                    // connect destination ( audio output )
+    osc.connect(gain);                                    // connect gain to the created earlier oscillator
+    return gain;
+  }
+
+  async function playtones(tone1, tone2) {
+    osc1 = getOscillator(tone1, 'triangle');      // create first oscillator, and set a type
+    gain1 = getGain(osc1);                        // create first gain. We should create new one for each sound
+
+    osc2 = getOscillator(tone2, "sine");          // then create second oscillator, which we will play at the same time when first will be active
+    gain2 = getGain(osc2);                        // create second gain and connect it to the second oscillator
+    osc1.start(context.currentTime);              // start sound1
+    gain1.gain.setValueAtTime(1, context.currentTime);  // set max sound level (1) when sound1 will be start
+    gain1.gain.exponentialRampToValueAtTime(0.001, context.currentTime + osc1dur); // define the period when the volume will increase until it reaches 1 (100%)
+    // here we want to play second sound, but after first one. delay = 1.
+    gain2.gain.setValueAtTime(1, context.currentTime + delay); // set max sound level when sound2 will be start + delay
+    gain2.gain.exponentialRampToValueAtTime(0.001, context.currentTime + osc2dur + delay);  // the same, but include delay (1s)
+    osc2.start(context.currentTime + delay);     // start sound 1 with delay (1s)
+    stoptones();                                 // call function which will automatically stop both sounds
+
+  }
+
+  function stoptones() {
+    osc1.stop(context.currentTime + osc1dur);                // stop the sound after the sound will be played once
+    osc2.stop(context.currentTime + osc2dur + delay);         // include delay.
+
+  }
+
+
+  function bubbleLevel(e) {
+    topAngle.innerText = e.beta.toFixed(1);
+    bottomAngle.innerText = e.beta.toFixed(1) * -1;
+    leftAngle.innerText = e.gamma.toFixed(1);
+    rightAngle.innerText = e.gamma.toFixed(1) * -1;
+
+    let bubbleXpos = parseInt(window.getComputedStyle(bubbleX, null).getPropertyValue("left"));
+    let bubbleYpos = parseInt(window.getComputedStyle(bubbleY, null).getPropertyValue("top"));
+
+    if (!bubbleCenterX || !bubbleCenterY) {
+      bubbleCenterY = bubbleYpos;
+      bubbleCenterX = bubbleXpos;
+    }
+
+    let distanceY = bubbleYpos - bubbleCenterY;
+    let distanceX = bubbleXpos - bubbleCenterX;
+    let distDiag = Math.sqrt(distanceX * distanceX + distanceY * distanceY);
+
+
+    if (supportVoice) {
+      supportVoice = false;
+
+
+      playtones(250 + e.beta.toFixed(2), 0);
+
+
+      // if (Math.abs(distanceX) < 10 && Math.abs(distanceY) < 10)
+      //   playtones(tones["F#5"], 0);
+      //
+      // else if (Math.abs(distanceX) > 20 && Math.abs(distanceX) < 40 && Math.abs(distanceY) > 20 && Math.abs(distanceY) < 40)
+      //   playtones(tones["A5"], 500);
+      //
+      // else if (Math.abs(distanceX) > 40 && Math.abs(distanceX) < 100 && Math.abs(distanceY) > 40 && Math.abs(distanceY) < 100)
+      //   playtones(tones["A5"], 1000);
+    }
+
+
+    if (bubbleXpos + e.gamma < 500 && bubbleXpos + e.gamma > 0)
+      bubbleX.style.left = bubbleXpos + e.gamma + "px";
+    if (bubbleYpos + e.beta < 500 && bubbleYpos + e.beta > 0)
+      bubbleY.style.top = bubbleYpos + e.beta + "px";
+  }
+
+  if ("ondeviceorientationabsolute" in window) {
+    window.addEventListener("deviceorientationabsolute", bubbleHandler);
+  } else if ("ondeviceorientation" in window) {
+    window.addEventListener("deviceorientation", bubbleHandler);
+  }
+</script>
+</body>
+</html>

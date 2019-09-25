@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>setPeriodicWave</title>
+    <style>
+        button {
+            position: fixed;
+            left: 10px;
+            top: 10px
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+</head>
+<body>
+
+<button>Play the sound</button>
+<canvas id='scope'></canvas>
+
+<script>//setup audio context
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
+var context = new window.AudioContext();
+
+//create nodes
+var osc; //create in event listener so we can press the button more than once
+var masterGain = context.createGain();
+var analyser = context.createAnalyser();
+
+//routing
+masterGain.connect(analyser);
+analyser.connect(context.destination);
+
+var isPlaying = false;
+
+//draw function for canvas
+function drawWave(analyser, ctx) {
+
+  var buffer = new Float32Array(1024),
+    w = ctx.canvas.width;
+
+  ctx.strokeStyle = "#777";
+  ctx.setTransform(1, 0, 0, -1, 0, 100.5); // flip y-axis and translate to center
+  ctx.lineWidth = 2;
+
+  (function loop() {
+    analyser.getFloatTimeDomainData(buffer);
+
+    ctx.clearRect(0, -100, w, ctx.canvas.height);
+
+    ctx.beginPath();
+    ctx.moveTo(0, buffer[0] * 90);
+    for (var x = 2; x < w; x += 2) ctx.lineTo(x, buffer[x] * 90);
+    ctx.stroke();
+
+    if (isPlaying) requestAnimationFrame(loop)
+  })();
+}
+
+//button trigger
+$(function () {
+  var c = document.getElementById('scope'),
+    ctx = c.getContext("2d");
+
+  c.height = 200;
+  c.width = 600;
+
+  // make 0-line permanent as background
+  ctx.moveTo(0, 100.5);
+  ctx.lineTo(c.width, 100.5);
+  ctx.stroke();
+  c.style.backgroundImage = "url(" + c.toDataURL() + ")";
+
+  $('button').on('mousedown', function () {
+    osc = context.createOscillator();
+    //osc settings
+    osc.frequency.value = 220;
+    var imag = new Float32Array([0, 0, 0, 0, 1]);   // sine
+    var real = new Float32Array(imag.length);  // cos
+    var customWave = context.createPeriodicWave(real, imag);  // cos,sine
+    osc.setPeriodicWave(customWave);
+
+    osc.connect(masterGain);
+    osc.start();
+    isPlaying = true;
+
+    drawWave(analyser, ctx);
+  });
+
+  $('button').on('mouseup', function () {
+    isPlaying = false;
+    osc.stop();
+  });
+});
+</script>
+
+
+</body>
+</html>

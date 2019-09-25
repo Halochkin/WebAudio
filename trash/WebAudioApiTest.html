@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Audio Api</title>
+    <style>
+
+        * {
+            color: white;
+        }
+
+        #logo {
+            height: 90%;
+            width: 90%;
+            margin: 5%;
+            background-color: #86dfff;
+            grid-area: logo;
+        }
+
+        #player {
+            background-color: #323232;
+            display: grid;
+            height: 40vw;
+            grid-template-columns: 20vw 1fr 0.8fr 1fr 1fr;
+            grid-template-rows: 10vw 10vw 0.3fr 1fr;
+            grid-template-areas: "logo name name name git" "logo song song song time" "progress progress progress progress progress" "sound back play next repeat";
+        }
+
+        #name {
+            padding: 5%;
+            font-size: 4vh;
+        }
+
+        #song {
+            grid-area: song;
+            padding: 3vh;
+        }
+
+        #currTime {
+            grid-area: time;
+            text-align: right;
+            padding-right: 3vw;
+            margin-top: 30%;
+        }
+
+        #sound {
+
+            grid-area: sound;
+            width: 10vw;
+            height: 5%;
+            margin: auto;
+            outline: none;
+        }
+
+        #back {
+            grid-area: back;
+        }
+
+        #play {
+            grid-area: play;
+        }
+
+        #next {
+            grid-area: next;
+        }
+
+        #repeat {
+            grid-area: repeat;
+        }
+
+        .button {
+            grid-area: play;
+            font-size: 7vh;
+            display: block;
+            background-color: transparent;
+            border: none;
+            margin: auto;
+            color: white;
+            text-align: center;
+            outline: none;
+        }
+
+        .button:hover {
+            color: #f88f4a;
+        }
+
+        input[type='range'] {
+            overflow: hidden;
+            -webkit-appearance: none;
+            border-radius: 10px;
+            width: 1vh;
+            /*background-color: #9a905d;*/
+        }
+
+        input::-webkit-slider-thumb {
+
+            box-shadow: -1000px 0 0 1000px #f88f4a;
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            background: #525253;
+        }
+
+        body {
+            margin: 0;
+        }
+
+        #name {
+            grid-area: name;
+        }
+
+        #progress {
+            grid-area: progress;
+            width: 100%;
+            height: 20%;
+            outline: none;
+            margin: auto;
+        }
+
+
+    </style>
+</head>
+<body>
+
+
+<!--<audio src="../audio/firestarter.mp3"></audio>-->
+
+
+<!--<div id="player">-->
+<!--<div id="logo"></div>-->
+<!--<div id="name">NAME</div>-->
+<!--<div id="song">La la la</div>-->
+<!--<div id="currTime">0</div>-->
+<!--<input id="progress" type="range" step="0.05" value="0">-->
+<!--<input id="sound" type="range" name="gain" step="0.05" min="0" max="1" value="0.5">-->
+<!--<button class="button" id="back">◂◂</button>-->
+<!--<button class="button" id="play">▶</button>-->
+<!--<button class="button" id="next">▸▸</button>-->
+<!--<button class="button" id="repeat">⟲</button>-->
+
+
+<!--</div>-->
+
+
+<!--<div id="info"></div>-->
+
+
+<!--<script type="module">-->
+
+
+<!--let playBbtn = document.querySelector("#play");-->
+<!--// let loopBbtn = document.querySelector("#loopBtn");-->
+<!--let repeatBbtn = document.querySelector("#repeat");-->
+<!--let soundVal = document.querySelector("#sound");-->
+<!--let progressBar = document.querySelector("#progress");-->
+<!--let currentTime = document.querySelector("#currTime");-->
+
+
+<!--let currentAudio = 0;-->
+
+<!--var context = new window.AudioContext();-->
+<!--var duration, source, destination, gainNode, pause = false, min = 0;-->
+
+
+<!--gainNode = context.createGain();-->
+<!--gainNode.gain.value = soundVal.value;-->
+<!--gainNode.connect(context.destination);-->
+
+
+<!--const audioElement = document.querySelectorAll('audio');-->
+<!--const track = context.createMediaElementSource(audioElement[currentAudio]);-->
+
+
+<!--track.connect(gainNode).connect(context.destination);-->
+
+
+<!--soundVal.addEventListener("input", (e) => {-->
+<!--if (gainNode)-->
+<!--gainNode.gain.value = e.target.value;  //todo describe this-->
+<!--});-->
+
+
+<!--playBbtn.addEventListener("click", (e) => {-->
+<!--// // create source in the case if it is a first trigger-->
+<!--// if (!source)-->
+<!--//   getSource();-->
+<!--// // here we want to start playing music, and implement pause/resume.-->
+<!--// // Start() should be called only once, then suspend() (pause) and resume()-->
+<!--//-->
+<!--// //lets start from first playing-->
+<!--// if (context.state === "suspended" && !pause) {-->
+<!--//   setTimeout(() => {-->
+<!--//     source.start(0);-->
+<!--//   }, 100);   // here we need delay to make sure that request was done, 10 ms is enough-->
+<!--//   e.target.innerText = "❚❚"-->
+<!--// }-->
+<!--// // if music started play and we want to make a pause-->
+<!--// if (context.state === "running" && !pause) {-->
+<!--//   context.suspend();-->
+<!--//   pause = true;-->
+<!--//   e.target.innerText = "▶";-->
+<!--//   return;-->
+<!--// }-->
+<!--//-->
+<!--// // to continiue play music from the last position-->
+<!--//-->
+<!--// if (context.state === "suspended" && pause) {-->
+<!--//   context.resume();-->
+<!--//   pause = false;-->
+<!--//   e.target.innerText = "❚❚"-->
+<!--// }-->
+
+
+<!--if (context.state === 'suspended') {-->
+<!--context.resume();-->
+<!--}-->
+
+
+<!--if (pause === false) {                            //todo for <audio> elements .play() / .pause()-->
+<!--audioElement[currentAudio].play();-->
+<!--context.resume();-->
+<!--e.target.innerText = "❚❚";-->
+<!--pause = true;-->
+<!--// if track is playing pause it-->
+<!--} else if (pause === true) {-->
+<!--audioElement[currentAudio].pause();-->
+<!--context.suspend();-->
+<!--e.target.innerText = "▶";-->
+<!--pause = false;-->
+<!--}-->
+<!--updateControlPanel();-->
+<!--});-->
+
+
+<!--progressBar.addEventListener("mousedown", async () => {-->
+<!--context.suspend();-->
+<!--// pause = false;-->
+<!--});-->
+
+
+<!--progressBar.addEventListener("mouseup", (e) => {-->
+<!--context.suspend();-->
+<!--// make pause-->
+<!--audioElement[currentAudio].currentTime = e.target.value;-->
+<!--setTimeout(() => {-->
+<!--context.resume();-->
+<!--});-->
+<!--});-->
+
+<!--function updateControlPanel(buffer) {-->
+<!--// let duration = getDuration(audioElement[currentAudio].src);-->
+
+<!--progressBar.setAttribute("max", audioElement[currentAudio].duration);-->
+<!--setInterval(() => {-->
+<!--progressBar.value = context.currentTime.toFixed(1);   // set running progress-->
+<!--currentTime.innerText = secondsToMinutes(context.currentTime.toFixed(0));-->
+<!--}, 1000)-->
+<!--}-->
+
+<!--function secondsToMinutes(time) {-->
+<!--return Math.floor(time / 60) + ':' + Math.floor(time % 60);-->
+<!--}-->
+
+
+<!--function getArrayBuffer(url) {-->
+<!--var xhr = new XMLHttpRequest();-->
+<!--xhr.open('GET', url, true);-->
+<!--xhr.responseType = 'arraybuffer';-->
+<!--xhr.onload = function (e) {-->
+<!--let buffer = e.response;-->
+<!--context.decodeAudioData(this.response, function (decodedArrayBuffer) {-->
+
+<!--return decodedArrayBuffer.duration;-->
+<!--}, function (e) {-->
+<!--console.log('Error decoding file', e);-->
+<!--});-->
+<!--};-->
+<!--xhr.send();-->
+<!--}-->
+
+
+<!--// let buffer = getArrayBuffer("../audio/firestarter.mp3");-->
+
+<!--// window.requestFileSystem(0, 11024*11024 /*1MB*/, function(fs) {-->
+
+<!---->
+<!---->
+<!---->
+<!---->
+<!---->
+<!---->
+
+<!--</script>-->
+
+<audio id="player1" src="http://mstorage.org/music_tmp/b97e7bab2c22376a542a90ef9466feff.mp3"></audio>  <!--1-->
+<audio id="player2" src="http://weblab011.com/code/town.mp3"></audio>
+<button onclick="playAudio()">PLAY</button>
+<script>
+
+
+  let audioContext;
+  if (window.AudioContext)
+    audioContext = new AudioContext();
+  let player1 = document.getElementById('player1').getAttribute("src");
+  let player2 = document.getElementById('player2').getAttribute("src");
+  let audio1 = loadSound(player1);
+
+
+  // let source1 = audioContext.createMediaElementSource(player1),
+  //   source2 = audioContext.createMediaElementSource(player2);
+  // let gain1 = audioContext.createGain(), gain2 = audioContext.createGain();
+  // let merger = audioContext.createChannelMerger();
+  //
+  // gain1.gain.value = 0.5; //R                                             //[1]
+  // gain2.gain.value = 1; //L
+  //
+  // source1.connect(gain1);
+  // source2.connect(gain2);
+  //
+  // gain1.connect(merger, 0, 0); //R                                        //[2]
+  // gain2.connect(merger, 0, 1); //L
+  // merger.connect(audioContext.destination);
+  //
+  // function playAudio() {
+  //   audioContext.resume();
+  //   player1.play();
+  //   player2.play();
+  // }
+
+
+  function getArrayBuffer(url) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.onload = function (e) {
+      let buffer = e.response;
+      alert();
+
+      // audioContext.decodeAudioData(e.response, function (decodedArrayBuffer) {
+      //   return decodedArrayBuffer.duration;
+      // }, function (e) {
+      //   console.log('Error decoding file', e);
+      // });
+    };
+    xhr.send();
+  }
+
+  window.AudioContext = window.AudioContext || window.webkitAudioContext;
+  let headers = new Headers({'X-Mashape-Key': 'API_KEY'});
+  let options = {
+    method: 'GET',
+    headers: headers,
+    mode: 'no-cors',
+    cache: 'default',
+    // type: "arraybuffer"
+  };
+
+
+  function playAudio(url) {
+    let context = new AudioContext();
+    let request = new Request(url);
+
+
+    fetch(request, options).then((response) => {
+
+
+      response.arrayBuffer().then((decodedData) => {
+
+
+        context.decodeAudioData(decodedData, (buffer) => {
+
+        });
+
+
+        console.log(decodedData);
+        // context.decodeAudioData(response).then((decodedData) => {
+        //   // var smp = audioCtx.createBufferSource();
+        //   // smp.buffer = decodedData;
+        //   // smp.connect(audioCtx.destination);
+        //   // smp.start(0);
+        //   console.log(decodedData);
+        // })
+      });
+    });
+  }
+
+
+  function loadSound(url) {
+    var request = new XMLHttpRequest();
+    request.open('GET', url, true);
+    request.responseType = 'arraybuffer';
+
+    // Decode asynchronously
+    request.onload = function () {
+      alert();
+      context.decodeAudioData(request.response, function (buffer) {
+        dogBarkingBuffer = buffer;
+      }, onError);
+    };
+    request.send();
+  }
+
+
+</script>
+</body>
+</html>

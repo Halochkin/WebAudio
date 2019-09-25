@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Channel Merger</title>
+    <!--<header name = "Access-Control-Allow-Origin" value = "*" ></header>-->
+</head>
+<body>
+<audio id="player1" src="../audio/firestarter.mp3"></audio>
+<audio id="player2" src="../audio/vivaldi.mp3"></audio>
+<button onclick="playAudio()">PLAY</button>
+<script>
+
+
+  function playAudio() {
+    let audioContext;
+    if (window.AudioContext)
+      audioContext = new AudioContext();
+    let player1 = document.getElementById('player1');
+    // player1.crossOrigin = "anonymous";
+    let player2 = document.getElementById('player2');
+    // player2.crossOrigin = "anonymous";
+    let source1 = audioContext.createMediaElementSource(player1);
+
+    let source2 = audioContext.createMediaElementSource(player2);
+    let gain1 = audioContext.createGain(), gain2 = audioContext.createGain();
+    let merger = audioContext.createChannelMerger();
+    //set gain level (volume)
+    // gain1.gain.value = 0.5; //R
+    // gain2.gain.value = 1; //L
+
+    source1.connect(gain1);
+    source2.connect(gain2);
+
+    gain1.connect(merger, 0, 2); //R
+    gain2.connect(merger, 0, 2); //L
+    merger.connect(audioContext.destination);
+    audioContext.resume();
+    player1.play();
+    player2.play();
+  }
+
+</script>
+</body>
+</html>

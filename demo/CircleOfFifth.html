@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Circle of fifth</title>
+
+</head>
+<body>
+<style>
+    body {
+        background-color: black;
+    }
+
+    #test {
+        font-size: 150px;
+        text-align: center;
+        line-height: 10;
+        color: green;
+    }
+
+    #test::after {
+        content: "°"
+    }
+</style>
+<style>
+    body {
+        background-color: black;
+    }
+
+    #test {
+        font-size: 150px;
+        text-align: center;
+        line-height: 10;
+        color: green;
+    }
+
+    #test::after {
+        content: "°"
+    }
+</style>
+<div id="test"></div>
+<script>
+  let octave = 4; //C4
+  const context = new AudioContext();
+  let gain, oscillator;
+  let eventArr = [];
+  let goal = 52;
+  let accord = ["E", "G", "C", "F"];
+  let step = (180 / 7); //7.5 tilt angles per tone
+  // note, frequency, tilt angle
+  const tones = [
+    ["D", 18.35, -step * 3],
+    ["A", 27.50, -step * 2],
+    ["F", 21.83, 0 - step],
+    ['C', 16.35, 0],
+    ["G", 24.50, step * 1],
+    ["E", 20.60, step * 2],
+    ["B", 30.87, step * 3],
+    // ["F#/Gb", 23.12],
+    // ['C#/DB', 17.32],
+    // ["G#/Ab", 25.96],
+    // ["D#/Eb", 19.45],
+    // ["A#/Bb", 29.14],
+  ];
+
+  function getClosest(currentTilt) {
+    return tones.reduce(function (prev, curr) {
+      return (Math.abs((curr[2]) - currentTilt) < Math.abs((prev[2] || prev) - currentTilt) ? curr[2] : prev);
+    });
+  }
+
+  function getNote(currentTilt) {
+    let closest = getClosest(currentTilt)[2];
+    let resarr = [];
+    tones.filter((item) => {
+      let result;
+      if (item[2].toFixed(3) === closest.toFixed(3)) {
+        closest += step;
+        // if (goal < item[2]) {
+        //   document.querySelector("#test").innerText = "Max tilt";
+        //   return;
+        // }
+        resarr.push(item[1]); // get frequency
+      }
+    });
+    return resarr;
+  }
+
+  function increaseOctave(arr, octave) {
+    for (let i = 0; i < arr.length; i++) {
+      for (let j = 0; j < octave; j++) {
+        arr[i] += arr[i]
+      }
+    }
+    return arr;
+  }
+
+  // //---------------SUPER UGLY, iterator does not work here, because it does not allow make a pauses between notes
+  let a = 0;
+  setInterval(() => {
+    let currentTilt = eventArr[eventArr.length - 1];
+    document.querySelector("#test").innerText = currentTilt.toFixed(0);
+    if (Math.abs(goal - currentTilt) < 2)
+      document.body.style.backgroundColor = "white";
+    // document.querySelector("#test").innerText = currentTilt.toFixed(2);
+    let result = increaseOctave(getNote(currentTilt), octave);
+
+    if (a >= result.length)
+      a = 0;
+    playTone(result[a]);
+    a++;
+    result = [];
+  }, 400);
+
+  function stopTone() {
+    gain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 3); //if you decrease 1 - you will get overlay effect (second sound start before the fist one end)
+    oscillator.stop(context.currentTime + 2);
+  }
+
+  function playTone(frequency) {
+    if (!eventArr.length) return;
+    oscillator = context.createOscillator();
+    gain = context.createGain();
+    oscillator.frequency.value = frequency;
+    oscillator.connect(filter);
+    let filter = context.createBiquadFilter();
+    filter.connect(gain);
+
+
+    filter.connect(context.destination);
+
+
+    filter.type = "bandpass";
+    filter.frequency.value = 100;
+
+
+    gain.gain.setValueAtTime(0, context.currentTime);
+    gain.gain.linearRampToValueAtTime(1, context.currentTime + 0.001);
+    oscillator.start(context.currentTime); // start sound
+    stopTone();
+  }
+
+  function levelHandler(e) {
+    var betaR = e.beta / 180 * Math.PI;
+    var gammaR = e.gamma / 180 * Math.PI;
+    var spinR = Math.atan2(Math.cos(betaR) * Math.sin(gammaR), Math.sin(betaR));
+    // convert back to degrees
+    var spinValue = spinR * 180 / Math.PI;
+    eventArr.push(spinValue);
+  }
+
+  if ("ondeviceorientationabsolute" in window)
+    window.addEventListener("deviceorientationabsolute", levelHandler);
+</script>
+</body>
+</html>

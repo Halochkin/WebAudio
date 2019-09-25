@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>oscillator piano</title>
+    <style>
+        div {
+            display: inline-block;
+            height: 150px;
+            width: 30px;
+            border: 2px solid black;
+        }
+    </style>
+</head>
+<body>
+<div frequency="150.00">A4</div>
+<div frequency="250.25">E5</div>
+<div frequency="350.77">B5</div>
+<script>
+  let audioContext;
+
+  if (window.AudioContext)
+    audioContext = new AudioContext();
+
+
+  function getOscillator(tone) {
+    let oscillator = audioContext.createOscillator();
+    oscillator.frequency.value = tone;                     // set frequency (mhz)
+    oscillator.connect(audioContext.destination);
+    return oscillator;
+  }
+
+  function playNote(key) {
+    let frequency = key.getAttribute("frequency");
+    let oscillator = getOscillator(frequency);
+    oscillator.start(audioContext.currentTime);
+    stopNote(oscillator)
+  }
+
+  function stopNote(osc) {
+    osc.stop(audioContext.currentTime + 2);
+  }
+
+  document.querySelectorAll("div").forEach(key => {
+    key.addEventListener("mouseenter", () => {
+      playNote(key);
+    })
+  })
+
+
+</script>
+</body>
+</html>

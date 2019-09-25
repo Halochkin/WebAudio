@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Dynamic gain level</title>
+</head>
+<body>
+<input type="range" value="0.5" min="0" max="1" step="0.1">
+<button onclick="playSound();">Play</button>
+<button onclick="stopSound();">Stop</button>
+
+<script>
+  let audioContext;                                                          //[1]
+  let input = document.querySelector("input");
+
+  if (window.AudioContext)
+    audioContext = new AudioContext();
+
+  let oscillator = audioContext.createOscillator();
+  let gainNode = audioContext.createGain();
+  gainNode.gain.setValueAtTime(input.value, audioContext.currentTime);       //[2]
+  gainNode.connect(audioContext.destination);                                //[3]
+  oscillator.connect(gainNode);                                              //[4]
+
+  function playSound() {
+    oscillator.start(audioContext.currentTime);                              //[5]
+  }
+
+  function stopSound() {
+    oscillator.stop(audioContext.currentTime);                               //[6]
+  }
+
+  input.addEventListener("input", (e) => {
+    gainNode.gain.setValueAtTime(e.target.value, audioContext.currentTime);  //[7]
+  });
+</script>
+</body>
+</html>

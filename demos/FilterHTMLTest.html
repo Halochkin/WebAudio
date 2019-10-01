@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Filter</title>
+    <style>
+        :root {
+            --audio-settings: sawtooth 244.50 0.0015 1.2 60 0.005, lowpass 244.50 0.001 0.8 50 0.130;
+        }
+    </style>
+    <web-audio>
+        <button id="playBtn">Play</button>
+        <button id="playBtn1">Play without filter</button>
+        <button id="stopBtn">Stop</button>
+    </web-audio>
+
+
+</head>
+<body>
+<script type="module">
+  import {StyleCallbackMixin} from "https://unpkg.com/joicomponents@1.3.6/src/style/StyleCallbackMixin.js"
+
+  let oscillator, filterNode = undefined;
+  let rootNode = document.querySelector(":root");
+
+  class WebAudioCSSComponent extends StyleCallbackMixin(HTMLElement) {
+    constructor() {
+      super();
+      this.audioContext = new AudioContext();
+    }
+
+
+    getFilter() {
+      filterNode = this.audioContext.createBiquadFilter();
+      filterNode.type = this.filterProperties[0];
+      filterNode.frequency.value = this.filterProperties[1];
+      filterNode.Q.value = 1;
+      filterNode.connect(this.audioContext.destination);
+      return filterNode;
+    }
+
+    playSound(filter) {
+      // if (this.audioContext.state === "running")  // to prevent double activation
+      //   return;
+      oscillator = this.audioContext.createOscillator();
+      oscillator.type = this.oscillatorProperties[0];
+      oscillator.frequency.value = this.oscillatorProperties[1];
+      oscillator.start(this.audioContext.currentTime);
+      if (filter)
+        oscillator.connect(this.getFilter());
+      else
+        oscillator.connect(this.audioContext.destination);
+    }
+
+    stopSound() {
+      if (this.audioContext.state === "running")
+        oscillator.stop(this.audioContext.currentTime);
+    }
+
+    static get observedStyles() {
+      return ["--audio-settings", "--audio-play", "--audio-stop"];
+    }
+
+    styleCallback(name, oldValue, newValue) {
+      if (name === "--audio-settings") {
+        let components = newValue.trim().split(",");
+        this.oscillatorProperties = components[0].trim().split(" ");
+        this.filterProperties = components[1].trim().split(" ");
+      }
+      else if (name === "--audio-play") {
+        if (newValue === "filter")
+          this.playSound(true);
+        else
+          this.playSound(false);  //play audio without filter
+      }
+      else if (name === "--audio-stop")
+        this.stopSound();
+    }
+  }
+
+  customElements.define("web-audio", WebAudioCSSComponent);
+
+
+  document.querySelector("#playBtn").addEventListener("click", function () {
+    rootNode.style.setProperty("--audio-play", "filter");  // trigger oscillator play(). It is not reusable, you can activate play() only once
+  });
+
+  document.querySelector("#playBtn1").addEventListener("click", function () {
+    rootNode.style.setProperty("--audio-play", "none");
+    if (rootNode.style.hasOwnProperty("--audio-stop"))
+      alert();
+  });
+
+  document.querySelector("#stopBtn").addEventListener("click", function () {
+    rootNode.style.setProperty("--audio-stop", "stop");  // trigger oscillator stop()
+  });
+
+
+</script>
+</body>
+</html>

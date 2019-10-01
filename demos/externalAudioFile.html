@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>External audio file</title>
+</head>
+<body>
+
+<button onclick="playAudio('http://weblab011.com/code/town.mp3')">PLAY</button>
+<script>
+
+  function playAudio(url) {
+    let context = new AudioContext();
+    let request = new XMLHttpRequest(url);
+
+    let headers = new Headers({'X-Mashape-Key': 'API_KEY'});
+
+    let options = {
+      method: 'GET',
+      headers: headers,
+      mode: 'no-cors',
+      cache: 'default',
+      type: "arraybuffer"
+    };
+
+    fetch(request, options).then((response) => {
+      response.arrayBuffer().then((decodedData) => {
+        context.decodeAudioData(decodedData, (buffer) => {
+        });
+        // alert(decodedData);
+        audioContext.decodeAudioData(response.arrayBuffer()).then((decodedData) => {
+          var smp = audioContext.createBufferSource();
+          smp.buffer = decodedData;
+          smp.connect(audioContext.destination);
+          smp.start(0);
+          console.log(decodedData);
+        })
+      });
+    });
+
+  }
+</script>
+</body>
+</html>

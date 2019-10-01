@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>offlineAudioContext</title>
+</head>
+<body>
+<script>
+
+
+  let buffer;
+
+  (async function () {
+    var offlineContext = new OfflineAudioContext(2, 44100 * 2.5, 44100);
+    var oscillator = new OscillatorNode(offlineContext, {type: "sawtooth", frequency: 150});
+    var filterNode = new BiquadFilterNode(offlineContext, {type: "lowpass", frequency: 170});
+    filterNode.connect(offlineContext.destination);
+    oscillator.connect(filterNode);
+    oscillator.connect(offlineContext.destination);
+    oscillator.start(0.5);
+    buffer = await offlineContext.startRendering();
+    // getSound();
+  })();
+
+  function getSound(context) {
+    var audioContext = new AudioContext();
+    var sound = audioContext.createBufferSource();
+    sound.buffer = buffer;
+    // sound.loop = true;
+    sound.connect(audioContext.destination);
+    sound.start(audioContext.currentTime + 0.5);
+  }
+
+  window.addEventListener("click", () => {
+    getSound();
+  });
+
+</script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<button onclick="playAudio('https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3')">PLAY</button>
+<script>
+
+  function playAudio(url) {
+    let context = new AudioContext();
+    var bufferSource = audioCtx.createBufferSource();
+    bufferSource.connect(audioCtx.destination);
+
+    fetch(url).then((response) => {
+      response.arrayBuffer().then((decodedData) => {
+        context.decodeAudioData(decodedData).then((decodedData1) => {
+          bufferSource.buffer = decodedData1;
+          bufferSource.start();
+        })
+      });
+    });
+  }
+</script>
+</body>
+</html>

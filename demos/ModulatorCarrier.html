@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Modulator Carrier Web Audio Api</title>
+    <style>
+        body {
+            min-width: 400px;
+            overflow: hidden;
+        }
+
+        footer {
+            clear: left;
+        }
+
+        #failure, #error {
+            color: #f00;
+        }
+
+        #overlay {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0.8;
+            background: #fff;
+            color: #468;
+            text-align: center;
+            padding-top: 10%;
+            font-size: 3em;
+            cursor: pointer;
+            z-index: 1000;
+            font-weight: bold;
+        }
+
+        #overlay:hover {
+            opacity: 0.9;
+        }
+
+        a {
+            color: #49c;
+            text-decoration: none;
+            -webkit-transition: 200ms;
+        }
+
+        a:hover {
+            text-decoration: none;
+            color: #169;
+        }
+
+        h1 {
+            color: #9bd;
+            font-family: Helvetica, sans-serif;
+        }
+
+        h3 {
+            font-size: 1.0em;
+            margin: 0.2em;
+            color: #369;
+        }
+
+        canvas {
+            width: 100%;
+            background: #fff;
+        }
+
+        .module {
+            float: left;
+            width: 47%;
+            margin: 0.5%;
+            padding: 1%;
+            background: #f3f7fc;
+            border: 1px solid #9cf;
+            border-radius: 3px;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+        }
+
+        #left-module {
+            margin-right: 1%;
+            position: relative;
+        }
+
+        #right-module {
+            margin-left: 1%;
+        }
+
+        #left-module:after {
+            position: absolute;
+            top: -15px;
+            right: -5%;
+            width: 5%;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #369;
+            color: #369;
+            content: "freq";
+            font-size: 0.8em;
+            font-family: monospace;
+        }
+
+        .module .viewport {
+            position: relative;
+            box-sizing: border-box;
+            -webkit-box-sizing: border-box;
+            overflow: auto;
+            margin-bottom: 5px;
+            clear: both;
+        }
+
+        .module canvas {
+            width: 49%;
+        }
+
+        .module canvas:first-child {
+            float: left;
+        }
+
+        .module canvas:last-child {
+            float: right;
+        }
+
+        .module h3 {
+            float: left;
+        }
+
+        .module .controls {
+            clear: both;
+        }
+
+        .module .controls p input {
+            width: 100%;
+        }
+
+        .module .controls label {
+            color: #c06;
+        }
+
+        .module .controls .value-container {
+            float: right;
+            color: #c06;
+        }
+
+        .module .controls .value {
+            font-weight: bold;
+        }
+
+        .module .infos {
+            color: #666;
+            font-family: monospace;
+            font-size: 0.8em;
+            white-space: pre;
+            float: right;
+        }
+
+    </style>
+</head>
+<body>
+<div id="error" style="display:none">Sorry, AudioContext is not supported by your browser, it should work on Google
+    Chrome.
+</div>
+<div id="failure" style="display:none">Your browser failed to start the AudioContext, probably because you have too much
+    web app using it. <a href="">Try again</a></div>
+
+<div id="overlay" style="display:none" class="play">
+    Press here <i href="#" class="icon-play"></i> to start
+</div>
+
+<header>
+    <h1>
+        Envelope
+
+        <span style="float: right">
+    <a href="#" class="play">
+        play
+        <i class="icon-play"></i>
+    </a>
+    <a href="#" class="stop">
+        stop
+        <i class="icon-stop"></i>
+    </a>
+    </span>
+    </h1>
+    <h2></h2>
+</header>
+
+<div class="modules">
+    <div id="left-module" class="module">
+        <h3>Modulator</h3>
+        <div class="infos"></div>
+        <div class="viewport">
+            <canvas width="200" height="150"></canvas>
+            <canvas width="200" height="150"></canvas>
+        </div>
+        <div class="controls">
+            <p>
+                <label>frequency</label>
+                <span class="value-container">
+                <span class="value"></span>
+                Hz
+            </span>
+                <input type="range" data-bind="modulator.osc.frequency" data-mapValue="val * NOTE_VAL.value / 4" min="1"
+                       max="20" step="1" value="1"/>
+            </p>
+        </div>
+    </div>
+    <div id="right-module" class="module">
+        <h3>Carrier</h3>
+        <div class="infos"></div>
+        <div class="viewport">
+            <canvas width="200" height="150"></canvas>
+            <canvas width="200" height="150"></canvas>
+        </div>
+        <div class="controls">
+            <p>
+                <label>frequency</label>
+                <span class="value-container">
+                <span class="value"></span>
+                Hz
+            </span>
+                <input type="range" data-bind="NOTE_VAL" min="20" max="1000" step="1" value="220"/>
+            </p>
+            <p>
+                <label>Play a note (or press SPACE)</label>
+                <button id="note">Play</button>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+  REFRESH_RATE = 30;
+  VOLUME = 0.5;
+
+  var AudioContext = window.AudioContext; // only webkitAudioContext supports Oscillator for now
+  if (!AudioContext) {
+    document.querySelector("#error").style.display = "block";
+    return;
+  }
+
+  NOTE_MUL = {value: 1};
+  NOTE_VAL = {value: 0};
+
+  var audioCtx;
+  var destination;
+  var carrier, modulator, lspectrum, rspectrum, lwaveform, rwaveform;
+
+  function demo() {
+    try {
+      audioCtx = new AudioContext();
+    }
+    catch (e) {
+      document.querySelector("#failure").style.display = "block";
+      // $('#failure').show();
+      return;
+    }
+
+    destination = audioCtx.createGain();
+    destination.gain.value = VOLUME;
+    destination.connect(audioCtx.destination);
+
+    // Config of the demos
+    carrier = new Carrier("sine", 220);
+    modulator = new Modulator("sine", 800);
+    lspectrum = new SpectrumAnalyzer(modulator.osc, 0, 10000);
+    rspectrum = new SpectrumAnalyzer(carrier.gain, 0, 10000);
+    lwaveform = new WaveformAnalyzer(modulator.osc);
+    rwaveform = new WaveformAnalyzer(carrier.gain);
+    modulator.gain.connect(carrier.osc.frequency);
+    carrier.gain.gain.value = 0;
+    carrier.gain.connect(destination);
+  }
+
+  function noteOn(freq, time) {
+    carrier.noteOn(freq, time);
+    modulator.noteOn(freq, time);
+  }
+
+  function noteOff(time) {
+    carrier.noteOff(time);
+    modulator.noteOff(time);
+  }
+
+  function envelope(gainNode, time, volume, attackDuration, decayDuration, sustain) {
+    gainNode.gain.cancelScheduledValues(time);
+    gainNode.gain.value = volume;
+    gainNode.gain.setValueAtTime(0, time);
+    gainNode.gain.linearRampToValueAtTime(volume, time + attackDuration);
+    gainNode.gain.linearRampToValueAtTime(volume * sustain, time + attackDuration + decayDuration);
+  }
+
+  function envelopeRelease(gainNode, time, releaseTime) {
+    gainNode.gain.cancelScheduledValues(0);
+    gainNode.gain.setValueAtTime(gainNode.gain.value, time);
+    gainNode.gain.linearRampToValueAtTime(0, time + releaseTime);
+  }
+
+  var renderInterval;
+
+  // A modulator have a oscillator and a gain
+  function Modulator(type, freq) {
+    this.osc = audioCtx.createOscillator();
+    this.gain = audioCtx.createGain();
+    this.osc.type = type;
+    this.osc.frequency.value = freq;
+    this.osc.connect(this.gain);
+    this.osc.start(0);
+
+    this.attackDuration = 0.2;
+    this.decayDuration = 0.4;
+    this.sustain = 0.3;
+    this.releaseTime = 0.5;
+  }
+
+  Modulator.prototype = {
+    noteOn: function (freq, time) {
+      envelope(this.gain, time, freq, this.attackDuration, this.decayDuration, this.sustain);
+    },
+    noteOff: function (time) {
+      envelopeRelease(this.gain, time, this.releaseTime);
+    },
+    toString: function () {
+      return "freq=" + this.osc.frequency.value.toFixed(1) +
+        " amp=" + this.gain.gain.value.toFixed(2);
+    }
+  };
+
+  function Carrier(type, freq) {
+    this.osc = audioCtx.createOscillator();
+    this.gain = audioCtx.createGain();
+    this.osc.type = type;
+    this.osc.frequency.value = freq;
+    this.osc.connect(this.gain);
+    this.osc.start(0);
+
+    this.attackDuration = 0.01;
+    this.decayDuration = 0.2;
+    this.sustain = 0.8;
+    this.releaseTime = 0.5;
+  }
+
+  Carrier.prototype = {
+    noteOn: function (freq, time) {
+      this.osc.frequency.value = freq;
+      envelope(this.gain, time, 1, this.attackDuration, this.decayDuration, this.sustain);
+    },
+    noteOff: function (time) {
+      envelopeRelease(this.gain, time, this.releaseTime);
+    },
+    toString: function () {
+      return "freq=" + this.osc.frequency.value.toFixed(1) +
+        " amp=" + this.gain.gain.value.toFixed(2);
+    }
+  };
+
+  function SpectrumAnalyzer(audioNode, minRange, maxRange) {
+    this.audioNode = audioNode;
+    this.analyser = audioCtx.createAnalyser();
+    this.analyser.fftSize = 2048;
+    this.analyser.maxDecibels = 0;
+    this.analyser.minDecibels = -100;
+    this.array = new Float32Array(this.analyser.frequencyBinCount);
+    this.minRange = minRange || 0;
+    this.maxRange = maxRange || audioCtx.sampleRate;
+    audioNode.connect(this.analyser);
+  }
+
+  SpectrumAnalyzer.prototype = {
+    update: function () {
+      this.analyser.getFloatFrequencyData(this.array);
+    },
+    render: function (ctx) {
+      var length = this.array.length;
+      var fftSize = this.analyser.fftSize;
+      var W = ctx.canvas.width;
+      var H = ctx.canvas.height;
+      var minDb = this.analyser.minDecibels;
+      var maxDb = this.analyser.maxDecibels;
+      var fy = function (y) {
+        y = (y - minDb) / (maxDb - minDb); // normalize
+        return (1 - y) * H;
+      }
+      ctx.clearRect(0, 0, W, H);
+      ctx.beginPath();
+      ctx.fillStyle = "#acd";
+      ctx.moveTo(0, H);
+      var iStart = Math.floor(fftSize * this.minRange / audioCtx.sampleRate);
+      var iStop = Math.floor(fftSize * this.maxRange / audioCtx.sampleRate);
+      var range = iStop - iStart;
+      for (var i = iStart; i <= iStop; ++i) {
+        ctx.lineTo(W * (i - iStart) / range, fy(this.array[i]));
+      }
+      ctx.lineTo(W, H);
+      ctx.fill();
+
+      var step = GridUtils.findNiceRoundStep(this.maxRange, 4);
+      var prefix = step >= 1000 ? "k" : "";
+      ctx.fillStyle = "#357";
+      for (var i = this.minRange + step; i < this.maxRange; i += step) {
+        var text = prefix == "k" ? Math.round(i / 1000) : i;
+        var x = W * i / this.maxRange;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 5);
+        ctx.stroke();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font = "14px sans-serif";
+        ctx.fillText(text, x, 6);
+      }
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#79b";
+      ctx.fillText("freq in " + prefix + "Hz", W, 20);
+      ctx.font = "14px sans-serif";
+    }
+  };
+
+  function WaveformAnalyzer(audioNode, sampling) {
+    this.audioNode = audioNode;
+    this.analyser = audioCtx.createAnalyser();
+    this.setSampling(sampling);
+    audioNode.connect(this.analyser);
+  }
+
+  WaveformAnalyzer.prototype = {
+    setSampling: function (sampling) {
+      this.array = new Uint8Array(sampling || 256);
+    },
+    update: function () {
+      this.analyser.getByteTimeDomainData(this.array);
+    },
+    render: function (ctx) {
+      var length = this.array.length;
+      var W = ctx.canvas.width;
+      var H = ctx.canvas.height;
+      var fy = function (y) {
+        y = y / 256; // normalize
+        return (0.1 + 0.8 * y) * H;
+      }
+      ctx.clearRect(0, 0, W, H);
+      ctx.beginPath();
+      ctx.strokeStyle = "#acd";
+      ctx.moveTo(0, fy(this.array[0]));
+      for (var i = 0; i < length; ++i) {
+        ctx.lineTo(W * i / length, fy(this.array[i]));
+      }
+      ctx.stroke();
+
+      var interval = length / audioCtx.sampleRate;
+      var step = GridUtils.findNiceRoundStep(interval, 4);
+      ctx.fillStyle = "#357";
+      for (var i = step; i < interval; i += step) {
+        var text = i * 1000;
+        var x = W * i / interval;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 5);
+        ctx.stroke();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "top";
+        ctx.font = "14px sans-serif";
+        ctx.fillText(text, x, 6);
+      }
+      ctx.textAlign = "right";
+      ctx.fillStyle = "#79b";
+      ctx.fillText("time in ms", W, 20);
+      ctx.font = "14px sans-serif";
+
+    }
+  };
+
+
+  function update() {
+    lspectrum.update();
+    rspectrum.update();
+    lwaveform.update();
+    rwaveform.update();
+    domupdate();
+  }
+
+  var leftcanvases = $('#left-module canvas');
+  var lctx1 = leftcanvases[0].getContext("2d");
+  var lctx2 = leftcanvases[1].getContext("2d");
+  var rightcanvases = $('#right-module canvas');
+  var rctx1 = rightcanvases[0].getContext("2d");
+  var rctx2 = rightcanvases[1].getContext("2d");
+
+  function render() {
+    rspectrum.render(rctx1);
+    lspectrum.render(lctx1);
+    rwaveform.render(rctx2);
+    lwaveform.render(lctx2);
+  }
+
+  var started;
+
+  function start() {
+    started = true;
+    if (!carrier) {
+      demo();
+      $(document).trigger("demo-ready");
+    }
+    document.querySelector("#play").style.display = "none";
+    document.querySelector("#stop").style.display = "block";
+
+    // $(".play").hide();
+    // $(".stop").show();
+
+    function loop() {
+      update();
+      render();
+    }
+
+    clearInterval(renderInterval);
+    renderInterval = setInterval(loop, REFRESH_RATE);
+  }
+
+  function stop() {
+    started = false;
+
+    document.querySelector("#play").style.display = "block";
+    document.querySelector("#stop").style.display = "none";
+    // $(".stop").hide();
+    // $(".play").show();
+
+    if (carrier) {
+      carrier.noteOff(audioCtx.currentTime);
+    }
+
+    clearInterval(renderInterval);
+  }
+
+  // var infos = $('.infos');
+  var infos = document.querySelector(".infos");
+
+
+  function domupdate() {
+    infos.eq(0).html(modulator.toString());
+    infos.eq(1).html(carrier.toString());
+  }
+
+
+  GridUtils = function () {
+
+    var log10 = Math.log(10.)
+
+    function powOf10(n) {
+      return Math.floor(Math.log(n) / log10)
+    }
+
+    return {
+      findNiceRoundStep: function (delta, preferedStep) {
+        var n = delta / preferedStep;
+        var p = powOf10(n);
+        var p10 = Math.pow(10, p);
+        var digit = n / p10;
+
+        if (digit < 1.5)
+          digit = 1;
+        else if (digit < 3.5)
+          digit = 2;
+        else if (digit < 7.5)
+          digit = 5;
+        else {
+          p += 1;
+          p10 = Math.pow(10, p);
+          digit = 1;
+        }
+        return digit * p10;
+      }
+    }
+  }();
+
+  // Binding
+
+
+  // document.querySelector("#stop").style.display = "block";
+
+  document.querySelector("#play").addEventListener("click", function (e) {
+    e.preventDefault();
+    start();
+  });
+
+  document.querySelector("#play").addEventListener("click", function (e) {
+    e.preventDefault();
+    stop();
+  });
+
+  stop();
+  window.addEventListener("blur", stop);
+
+
+  var pressed = false;
+
+
+  window.addEventListener("keypress", function (ev) {
+    e.preventDefault();
+  });
+
+  window.addEventListener("keydown", function (ev) {
+    e.preventDefault();
+    if (!started || pressed) return;
+    if (e.which !== 32) return;
+    pressed = true;
+    noteOn(NOTE_VAL.value, audioCtx.currentTime);
+  });
+
+  window.addEventListener("keyup", function (ev) {
+    pressed = false;
+    if (!started) return;
+    if (e.which !== 32) return;
+    noteOff(audioCtx.currentTime);
+  });
+
+
+  window.addEventListener("mousedown", function (ev) {
+    noteOn(NOTE_VAL.value, audioCtx.currentTime);
+  });
+
+  window.addEventListener("touchstart", function (ev) {
+    noteOn(NOTE_VAL.value, audioCtx.currentTime);
+  });
+
+
+  window.addEventListener("mouseup", function (ev) {
+    noteOff(audioCtx.currentTime);
+  });
+
+  window.addEventListener("touchend", function (ev) {
+    noteOff(audioCtx.currentTime);
+  });
+
+
+  document.addEventListener("demo-ready", function () {
+    document.querySelectorAll("input[data-bind]").forEach(function (item) {
+      var input = item;
+      var param = eval(input.attr("data-bind"));
+      var mapValueData = input.attr("data-mapValue");
+      var mapValue = !mapValueData ? function (v) {
+        return v
+      } : new Function("val", "return " + mapValueData);
+
+      function sync() {
+        var v = mapValue(parseFloat(input.val(), 10));
+        param.value = v;
+        input.parent().find(".value").text(v);
+      }
+
+      $('input').on("input", sync);
+      sync();
+      setTimeout(sync, 0);
+    })
+
+  })
+
+
+  $(document).on("demo-ready", function () {
+    $('input[data-bind]').each(function () {
+      var input = $(this);
+      var param = eval(input.attr("data-bind"));
+      var mapValueData = input.attr("data-mapValue");
+      var mapValue = !mapValueData ? function (v) {
+        return v
+      } : new Function("val", "return " + mapValueData);
+
+      function sync() {
+        var v = mapValue(parseFloat(input.val(), 10));
+        param.value = v;
+        input.parent().find(".value").text(v);
+      }
+
+      $('input').on("input", sync);
+      sync();
+      setTimeout(sync, 0);
+    });
+  });
+</script>
+</body>
+</html>

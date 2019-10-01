@@ -292,115 +292,29 @@
 
 <!--</script>-->
 
-<audio id="player1" src="http://mstorage.org/music_tmp/b97e7bab2c22376a542a90ef9466feff.mp3"></audio>  <!--1-->
-<audio id="player2" src="http://weblab011.com/code/town.mp3"></audio>
-<button onclick="playAudio()">PLAY</button>
+<!--<audio id="player1" src="http://mstorage.org/music_tmp/b97e7bab2c22376a542a90ef9466feff.mp3"></audio>  &lt;!&ndash;1&ndash;&gt;-->
+<!--<audio id="player2" src="http://weblab011.com/code/town.mp3"></audio>-->
+<button onclick="loadSound('https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3')">PLAY</button>
 <script>
-
-
-  let audioContext;
-  if (window.AudioContext)
-    audioContext = new AudioContext();
-  let player1 = document.getElementById('player1').getAttribute("src");
-  let player2 = document.getElementById('player2').getAttribute("src");
-  let audio1 = loadSound(player1);
-
-
-  // let source1 = audioContext.createMediaElementSource(player1),
-  //   source2 = audioContext.createMediaElementSource(player2);
-  // let gain1 = audioContext.createGain(), gain2 = audioContext.createGain();
-  // let merger = audioContext.createChannelMerger();
-  //
-  // gain1.gain.value = 0.5; //R                                             //[1]
-  // gain2.gain.value = 1; //L
-  //
-  // source1.connect(gain1);
-  // source2.connect(gain2);
-  //
-  // gain1.connect(merger, 0, 0); //R                                        //[2]
-  // gain2.connect(merger, 0, 1); //L
-  // merger.connect(audioContext.destination);
-  //
-  // function playAudio() {
-  //   audioContext.resume();
-  //   player1.play();
-  //   player2.play();
-  // }
-
-
-  function getArrayBuffer(url) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = function (e) {
-      let buffer = e.response;
-      alert();
-
-      // audioContext.decodeAudioData(e.response, function (decodedArrayBuffer) {
-      //   return decodedArrayBuffer.duration;
-      // }, function (e) {
-      //   console.log('Error decoding file', e);
-      // });
-    };
-    xhr.send();
-  }
-
-  window.AudioContext = window.AudioContext || window.webkitAudioContext;
-  let headers = new Headers({'X-Mashape-Key': 'API_KEY'});
-  let options = {
-    method: 'GET',
-    headers: headers,
-    mode: 'no-cors',
-    cache: 'default',
-    // type: "arraybuffer"
-  };
-
-
-  function playAudio(url) {
-    let context = new AudioContext();
-    let request = new Request(url);
-
-
-    fetch(request, options).then((response) => {
-
-
-      response.arrayBuffer().then((decodedData) => {
-
-
-        context.decodeAudioData(decodedData, (buffer) => {
-
-        });
-
-
-        console.log(decodedData);
-        // context.decodeAudioData(response).then((decodedData) => {
-        //   // var smp = audioCtx.createBufferSource();
-        //   // smp.buffer = decodedData;
-        //   // smp.connect(audioCtx.destination);
-        //   // smp.start(0);
-        //   console.log(decodedData);
-        // })
-      });
-    });
-  }
-
-
   function loadSound(url) {
-    var request = new XMLHttpRequest();
-    request.open('GET', url, true);
-    request.responseType = 'arraybuffer';
+    if (window.AudioContext) {
+      var audioCtx = new AudioContext();
+      var bufferSource = audioCtx.createBufferSource();
+      bufferSource.connect(audioCtx.destination);
+      var request = new XMLHttpRequest();
 
-    // Decode asynchronously
-    request.onload = function () {
-      alert();
-      context.decodeAudioData(request.response, function (buffer) {
-        dogBarkingBuffer = buffer;
-      }, onError);
-    };
-    request.send();
+      request.open('get', url, true);
+      request.responseType = 'arraybuffer';
+
+      request.onload = function () {
+        audioCtx.decodeAudioData(request.response, function (decodedata) {
+          bufferSource.buffer = decodedata;
+          bufferSource.start();
+        })
+      };
+      ajax.send(null);
+    }
   }
-
-
 </script>
 </body>
 </html>

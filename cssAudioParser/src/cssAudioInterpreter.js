@@ -1,4 +1,8 @@
 import {parse} from "./cssAudioParser.js";
+import {DFT} from "./fourierTransformations.js"
+
+let initialOscillator;
+
 
 function plotEnvelope(target, points) {
   target.value = 0;
@@ -12,6 +16,15 @@ function plotEnvelope(target, points) {
       throw new Error("todo: implement 'l' or 'a' type of time coordinate.");
     nextStart += time;
   }
+}
+
+function setPeriodicWave(x) {
+  if (x < 0) return 0;
+  x = x * 2 % 2 + 0.05;
+  if (x < 1) {
+    return 1 + Math.log(x) / 4;
+  }
+  return Math.pow(-x, -2);
 }
 
 function setAudioParameter(target, param) {
@@ -54,8 +67,9 @@ function setAudioParameter(target, param) {
  */
 const cachedFiles = Object.create(null);
 let noise;
+
 function makeNoiseNode(duration, sampleRate) {
-  const audioCtx = new OfflineAudioContext(1, sampleRate* duration, sampleRate);
+  const audioCtx = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
   const bufferSize = sampleRate * duration; // set the time of the note
   const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate); // create an empty buffer
   let data = buffer.getChannelData(0); // get data
@@ -74,9 +88,11 @@ class AudioFileRegister {
     }
     return cache.slice();//att! must use .slice() to avoid depleting the ArrayBuffer
   }
-  static noise(){
+
+  static noise() {
     return noise || (noise = makeNoiseNode(3, 44100));
   }
+
   //to max: it doesn't seem to matter which AudioContext makes the AudioBuffer
   //to max: this makes me think that the method .createBuffer could have been static
   //to max: but it means that the AudioBuffer objects are context free. Also for OfflineAudioContexts.
@@ -113,8 +129,10 @@ class InterpreterFunctions {
     setAudioParameter(oscillator.frequency, freq);
     // oscillator.frequency.value = parseFloat(freq);
     oscillator.start();
+    initialOscillator = oscillator;  //todo: super ugly
     return oscillator;
   }
+
 
   static lowpass(ctx, freq, q, detune) {
     return InterpreterFunctions.makeFilter(ctx, "lowpass", {freq, q, detune});
@@ -174,6 +192,27 @@ class InterpreterFunctions {
     noise.loop = true;
     noise.start();
     return noise;
+  }
+
+// added by Max
+  static async wave(audioCtx, frequency, gain) {
+    let lfoOsc = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    setAudioParameter(lfoOsc.frequency, frequency);
+    setAudioParameter(lfoGain.gain, gain);
+    let count = 128;
+    let sharkFinValues = new Array(count);
+    for (let i = 0; i < count; i++) {
+      sharkFinValues[i] = setPeriodicWave(i / count);
+    }
+    let ft = new DFT(sharkFinValues.length);
+    ft.forward(sharkFinValues);
+    lfoOsc.setPeriodicWave(audioCtx.createPeriodicWave(ft.real, ft.imag));
+    lfoOsc.connect(lfoGain);
+    lfoGain.connect(initialOscillator.frequency);  //todo global variable, so ugly in the context of the architecture. Fix it
+    lfoOsc.start();
+    const audioNodes = await CssAudioInterpreterContext.interpretPipe(audioCtx, initialOscillator);
+    return lfoGain;
   }
 }
 

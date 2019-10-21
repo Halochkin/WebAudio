@@ -1,91 +1,101 @@
-<style>
-    :root {
-        --audio-test: "gain([0.9/0.9, 0.6/0.001, 0.6/0.4, 0/0.02])";
-    }
-</style>
+
 
 
 <script type="module">
-  import {parse} from "../src/cssAudioParser.js";
-  import {interpret} from "../src/cssAudioInterpreter.js";
+  import {parse} from "../../InfiniteSounds/src/Parser.js";
+  import {interpret} from "../../InfiniteSounds/src/Interpreter.js";
 
-  let a = "a > b > c";
-  let a_ = '{"type":"pipe","nodes":["a","b","c"]}';
 
-  let b = "a > --audio-var > c";
-  let b_ = '{"type":"pipe","nodes":["a","--audio-var","c"]}';
+  // let a = "a > b > c";
+  // let a_ = '{"type":">","args":[{"type":"a"},{"type":"b"},{"type":"c"}]}';
+  // let b = "a > --audio-var > c";
+  // let b_ = '{"type":">","args":[{"type":"a"},{"type":"--","value":"--audio-var"},{"type":"c"}]}';
+  // let c = "a > b > [c, d]";
+  // let c_ = '{"type":">","args":[{"type":"a"},{"type":"b"},{"type":",","args":[{"type":"c"},{"type":"d"}]}]}';
+  // let d = "sawtooth(144hz) > lowpass(140hz, 24dB)";
+  // let d_ = '{"type":">","args":[{"type":"sawtooth","args":[{"num":144,"unit":"hz"}]},{"type":"lowpass","args":[{"num":140,"unit":"hz"},{"num":24,"unit":"dB"}]}]}';
+  //
+  // let e = "square(144hz) > vol([1/0.0015],[0.6/0.001],[0.6/1],[0/0.03]) > lowpass(180hz, 12dB)";
+  // let e_ = '{"type":">","args":[{"type":"square","args":[{"num":144,"unit":"hz"}]},{"type":"vol","args":[{"type":",","args":[{"type":"/","args":[{"num":1,"unit":""},{"num":0.0015,"unit":""}]}]},{"type":",","args":[{"type":"/","args":[{"num":0.6,"unit":""},{"num":0.001,"unit":""}]}]},{"type":",","args":[{"type":"/","args":[{"num":0.6,"unit":""},{"num":1,"unit":""}]}]},{"type":",","args":[{"type":"/","args":[{"num":0,"unit":""},{"num":0.03,"unit":""}]}]}]},{"type":"lowpass","args":[{"num":180,"unit":"hz"},{"num":12,"unit":"dB"}]}]}';
+  //
+  // let f = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3)";
+  // let f_ = '{"type":">","args":[{"type":"url","args":[{"type":"_url","value":"https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"}]}]}';
+  //
+  // let f2 = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3, 1)";
+  // let f2_ = '{"type":">","args":[{"type":"url","args":[{"type":"_url","value":"https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"},{"num":1,"unit":""}]}]}';
+  //
+  // let g = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3) > lowpass(180hz, 12dB)";
+  // let g_ = '{"type":">","args":[{"type":"url","args":[{"type":"_url","value":"https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"}]},{"type":"lowpass","args":[{"num":180,"unit":"hz"},{"num":12,"unit":"dB"}]}]}';
+  //
+  // let h = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3) > gain([1/0.0015],[0.6/0.001],[0.6/1],[0/0.03]) > lowpass(180hz, 12dB)";
+  // let h_ = '{"type":">","args":[{"type":"url","args":[{"type":"_url","value":"https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"}]},{"type":"gain","args":[{"type":",","args":[{"type":"/","args":[{"num":1,"unit":""},{"num":0.0015,"unit":""}]}]},{"type":",","args":[{"type":"/","args":[{"num":0.6,"unit":""},{"num":0.001,"unit":""}]}]},{"type":",","args":[{"type":"/","args":[{"num":0.6,"unit":""},{"num":1,"unit":""}]}]},{"type":",","args":[{"type":"/","args":[{"num":0,"unit":""},{"num":0.03,"unit":""}]}]}]},{"type":"lowpass","args":[{"num":180,"unit":"hz"},{"num":12,"unit":"dB"}]}]}';
+  //
+  // let i = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3) > [a, b]";
+  // let i_ = '{"type":">","args":[{"type":"url","args":[{"type":"_url","value":"https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"}]},{"type":",","args":[{"type":"a"},{"type":"b"}]}]}';
+  //
+  // let j = "triangle(144hz) > peaking(120hz, 25dB, 10hz)";
+  // let j_ = '{"type":">","args":[{"type":"triangle","args":[{"num":144,"unit":"hz"}]},{"type":"peaking","args":[{"num":120,"unit":"hz"},{"num":25,"unit":"dB"},{"num":10,"unit":"hz"}]}]}';
+  //
+  // let k = "noise > bandpass(140hz, 12dB, 300hz)";
+  // let k_ = '{"type":">","args":[{"type":"noise"},{"type":"bandpass","args":[{"num":140,"unit":"hz"},{"num":12,"unit":"dB"},{"num":300,"unit":"hz"}]}]}';
+  //
+  // let l = 'noise > gain([0.9/0.9, 0.6/0.001, 0.6/0.4, 0/0.02]) > peaking(120hz, 25dB, 100hz)';
+  // let l_ = '{"type":">","args":[{"type":"noise"},{"type":"gain","args":[{"type":",","args":[{"type":"/","args":[{"num":0.9,"unit":""},{"num":0.9,"unit":""}]},{"type":"/","args":[{"num":0.6,"unit":""},{"num":0.001,"unit":""}]},{"type":"/","args":[{"num":0.6,"unit":""},{"num":0.4,"unit":""}]},{"type":"/","args":[{"num":0,"unit":""},{"num":0.02,"unit":""}]}]}]},{"type":"peaking","args":[{"num":120,"unit":"hz"},{"num":25,"unit":"dB"},{"num":100,"unit":"hz"}]}]}';
+  // let m = 'a > --audio-var > peaking(120hz, 25dB, 1hz)';
+  // let m_ = '{"type":">","args":[{"type":"a"},{"type":"--","value":"--audio-var"},{"type":"peaking","args":[{"num":120,"unit":"hz"},{"num":25,"unit":"dB"},{"num":1,"unit":"hz"}]}]}';
+  // let n = 'sine(F4)';
+  // let n_ = '{"type":">","args":[{"type":"sine","args":[{"type":"F4"}]}]}';
+  // let o = 'sine(F#4)';
+  // let o_ = '{"type":">","args":[{"type":"sine","args":[{"type":"F#4"}]}]}';
+  // let p = 'sine(F#4/Ionian)';
+  // let p_ = '{"type":">","args":[{"type":"sine","args":[{"type":"/","args":[{"type":"F#4"},{"type":"Ionian"}]}]}]}';
+  // let q = 'sine(F#4/--my-mode)';
+  // let q_ = '{"type":">","args":[{"type":"sine","args":[{"type":"/","args":[{"type":"F#4"},{"type":"--","value":"--my-mode"}]}]}]}';
+  // let r = 'sine(F#4/plus(2,2))';
+  // let r_ = '{"type":">","args":[{"type":"sine","args":[{"type":"/","args":[{"type":"F#4"},{"type":"plus","args":[{"num":2,"unit":""},{"num":2,"unit":""}]}]}]}]}';
 
-  let c = "a > b > [c, d]";
-  let c_ = '{"type":"pipe","nodes":["a","b",["c","d"]]}';
+  // function test(msg, tst) {
+  //   let obj = parse(msg);
+  //   let stringify = JSON.stringify(obj);
+  //   if (tst === stringify)
+  //     console.log("success: ", msg, obj);
+  //   else
+  //     console.error("error: ", msg, obj);
+  // }
 
-  let d = "sawtooth(144hz) > lowpass(140hz, 24dB)";
-  let d_ = '{"type":"pipe","nodes":[{"type":"fun","name":"sawtooth","args":[{"num":"144","unit":"hz"}]},{"type":"fun","name":"lowpass","args":[{"num":"140","unit":"hz"},{"num":"24","unit":"dB"}]}]}';
-
-  let e = "square(144hz) > gain([1/0.0015],[0.6/0.001],[0.6/1],[0/0.03]) > lowpass(180hz, 12dB)";
-  let e_ = '{"type":"pipe","nodes":[{"type":"fun","name":"square","args":[{"num":"144","unit":"hz"}]},{"type":"fun","name":"gain","args":[[[{"num":"1","unit":""},{"num":"0.0015","unit":""}]],[[{"num":"0.6","unit":""},{"num":"0.001","unit":""}]],[[{"num":"0.6","unit":""},{"num":"1","unit":""}]],[[{"num":"0","unit":""},{"num":"0.03","unit":""}]]]},{"type":"fun","name":"lowpass","args":[{"num":"180","unit":"hz"},{"num":"12","unit":"dB"}]}]}';
-
-  let f = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3)";
-  let f_ = '{"type":"pipe","nodes":[{"type":"fun","name":"url","args":["https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"]}]}';
-
-  let g = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3) > lowpass(180hz, 12dB)";
-  let g_ = '{"type":"pipe","nodes":[{"type":"fun","name":"url","args":["https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"]},{"type":"fun","name":"lowpass","args":[{"num":"180","unit":"hz"},{"num":"12","unit":"dB"}]}]}';
-
-  let h = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3) > gain([1/0.0015],[0.6/0.001],[0.6/1],[0/0.03]) > lowpass(180hz, 12dB)";
-  let h_ = '{"type":"pipe","nodes":[{"type":"fun","name":"url","args":["https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"]},{"type":"fun","name":"gain","args":[[[{"num":"1","unit":""},{"num":"0.0015","unit":""}]],[[{"num":"0.6","unit":""},{"num":"0.001","unit":""}]],[[{"num":"0.6","unit":""},{"num":"1","unit":""}]],[[{"num":"0","unit":""},{"num":"0.03","unit":""}]]]},{"type":"fun","name":"lowpass","args":[{"num":"180","unit":"hz"},{"num":"12","unit":"dB"}]}]}';
-
-  let i = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3) > [a, b]";
-  let i_ = '{"type":"pipe","nodes":[{"type":"fun","name":"url","args":["https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3"]},["a","b"]]}';
-
-  let j = "triangle(144hz) > peaking(120hz, 25dB, 10hz)";
-  let j_ = '{"type":"pipe","nodes":[{"type":"fun","name":"triangle","args":[{"num":"144","unit":"hz"}]},{"type":"fun","name":"peaking","args":[{"num":"120","unit":"hz"},{"num":"25","unit":"dB"},{"num":"10","unit":"hz"}]}]}';
-
-  let k = "noise > bandpass(140hz, 12dB, 300hz)";
-  let k_ = '{"type":"pipe","nodes":["noise",{"type":"fun","name":"bandpass","args":[{"num":"140","unit":"hz"},{"num":"12","unit":"dB"},{"num":"300","unit":"hz"}]}]}';
-
-  let l = 'noise > gain([0.9/0.9, 0.6/0.001, 0.6/0.4, 0/0.02]) > peaking(120hz, 25dB, 100hz)';
-  let l_ = '{"type":"pipe","nodes":["noise",{"type":"fun","name":"gain","args":[[[{"num":"0.9","unit":""},{"num":"0.9","unit":""}],[{"num":"0.6","unit":""},{"num":"0.001","unit":""}],[{"num":"0.6","unit":""},{"num":"0.4","unit":""}],[{"num":"0","unit":""},{"num":"0.02","unit":""}]]]},{"type":"fun","name":"peaking","args":[{"num":"120","unit":"hz"},{"num":"25","unit":"dB"},{"num":"100","unit":"hz"}]}]}';
-
-  let m = 'a > --audio-var > peaking(120hz, 25dB, 1hz)';
-  let m_ = '{"type":"pipe","nodes":["a","--audio-var",{"type":"fun","name":"peaking","args":[{"num":"120","unit":"hz"},{"num":"25","unit":"dB"},{"num":"1","unit":"hz"}]}]}';
-
-  function test(msg, tst) {
-    let obj = parse(msg);
-    let stringify = JSON.stringify(obj);
-    if (tst === stringify)
-      console.log("success: ", msg, obj);
-    else
-      console.error("error: ", msg, obj);
-  }
-
-  test(a, a_);
-  test(b, b_);
-  test(c, c_);
-  test(d, d_);
-  test(e, e_);
-  test(f, f_);
-  test(g, g_);
-  test(h, h_);
-  test(i, i_);
-  test(j, j_);
-  test(k, k_);
-  test(l, l_);
-  test(m, m_);
+  // test(q, q_);
+  // test(a, a_);
+  // test(b, b_);
+  // test(c, c_);
+  // test(d, d_);
+  // test(e, e_);
+  // test(f, f_);
+  // test(f2, f2_);
+  // test(g, g_);
+  // test(h, h_);
+  // test(i, i_);
+  // test(j, j_);
+  // test(k, k_);
+  // test(l, l_);
+  // test(m, m_);
+  // test(n, n_);
+  // test(o, o_);
+  // test(p, p_);
+  // test(q, q_);
+  // test(r, r_);
 
   async function onClick() {
     // let x = "sine(340hz) > gain(0.2)"; //works
     // let x = "sine(340hz) > gain(square(2hz))"; //works (telephone busy)
-
-    let x = "sine(1100hz) > wave(2.6hz, 350hz)";
     // let x = "sine(1200hz)";
-
-
     // let x = "square(650hz) > gain(sine(2hz))"; //works (ambulance)
-
-
     // let x = "sine(340hz) > gain([0.9/0.9, 0.6/0.001, 0.6/0.4, 0/0.02])"; //works
     // let x = "noise";
     // let x = "url(https://s3-us-west-2.amazonaws.com/s.cdpn.io/355309/G4.mp3) > gain([1/0.0015],[0.3/0.3],[0.6/1.1],[0/1.2]) > lowpass(180hz, 12dB)";
     // let x = "a > --audio-var > peaking(120hz, 25dB, 1hz)";
+
+    let x = "sine(1100hz) > wave(2.6hz, 350dB)";
+
     const ctx = await interpret(x);
 //    const ctx = await interpret(g);
     ctx.resume();

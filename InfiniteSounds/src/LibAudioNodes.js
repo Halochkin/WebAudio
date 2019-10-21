@@ -1,15 +1,9 @@
-import {parse} from "./cssAudioParser.js";
-// import {DFT} from "./fourierTransformations.js"
-
-let initialOscillator;
-
-
 function plotEnvelope(target, points) {
   target.value = 0;
   let nextStart = 0;
   for (let point of points) {
-    let vol = parseFloat(point[0].num);
-    let time = parseFloat(point[1].num);
+    let vol = point[0].value;
+    let time = point[1].value;
     if (point[1].unit === "" || point[1].unit === "e")
       target.setTargetAtTime(vol, nextStart, time / 4);   //todo or /3? as mdn suggests
     else
@@ -18,24 +12,15 @@ function plotEnvelope(target, points) {
   }
 }
 
-// function setPeriodicWave(x) {
-//   if (x < 0) return 0;
-//   x = x * 2 % 2 + 0.05;
-//   if (x < 1) {
-//     return 1 + Math.log(x) / 4;
-//   }
-//   return Math.pow(-x, -2);
-// }
-
 function setAudioParameter(target, param) {
   if (param === undefined) {
     return;
   } else if (param instanceof AudioNode) {
     param.connect(target);
-  } else if (param.hasOwnProperty("num")) {
+  } else if (param.hasOwnProperty("value")) {
     //todo if the number is not parsed outside, then the units will be universal to all nodes..
     //todo I have not implemented any interpretation of "Hz" or "db" or "ms" or whatever
-    target.value = parseFloat(param.num);
+    target.value = param.value;
   } else if (param instanceof Array) {
     plotEnvelope(target, param);
     // } else if (gain instanceof undefined) { //todo should I include this??  or call it "mute"??
@@ -69,9 +54,9 @@ const cachedFiles = Object.create(null);
 let noise;
 
 function makeNoiseNode(duration, sampleRate) {
-  const audioCtx = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
+  const ctx = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
   const bufferSize = sampleRate * duration; // set the time of the note
-  const buffer = audioCtx.createBuffer(1, bufferSize, sampleRate); // create an empty buffer
+  const buffer = ctx.createBuffer(1, bufferSize, sampleRate); // create an empty buffer
   let data = buffer.getChannelData(0); // get data
   // fill the buffer with noise
   for (let i = 0; i < bufferSize; i++)
@@ -98,22 +83,22 @@ class AudioFileRegister {
   //to max: but it means that the AudioBuffer objects are context free. Also for OfflineAudioContexts.
 }
 
-class InterpreterFunctions {
+export class InterpreterFunctions {
 
-  static sine(ctx, freq) {
-    return InterpreterFunctions.makeOscillator(ctx, "sine", freq);
+  static async sine(ctx, freq, wave) {
+    return InterpreterFunctions.makeOscillator(ctx, "sine", freq, wave);
   }
 
-  static square(ctx, freq) {
-    return InterpreterFunctions.makeOscillator(ctx, "square", freq);
+  static async square(ctx, freq, wave) {
+    return InterpreterFunctions.makeOscillator(ctx, "square", freq, wave);
   }
 
-  static sawtooth(ctx, freq) {
-    return InterpreterFunctions.makeOscillator(ctx, "sawtooth", freq);
+  static async sawtooth(ctx, freq, wave) {
+    return InterpreterFunctions.makeOscillator(ctx, "sawtooth", freq, wave);
   }
 
-  static triangle(ctx, freq) {
-    return InterpreterFunctions.makeOscillator(ctx, "triangle", freq);
+  static async triangle(ctx, freq, wave) {
+    return InterpreterFunctions.makeOscillator(ctx, "triangle", freq, wave);
   }
 
   static gain(ctx, gainParam) {
@@ -122,17 +107,31 @@ class InterpreterFunctions {
     return node;
   }
 
-  static makeOscillator(audioContext, type, freq) {
+  static async makeOscillator(ctx, type, freq, wave) {
     //todo convert the factory methods to constructors as specified by MDN
-    const oscillator = audioContext.createOscillator();
+    const oscillator = ctx.createOscillator();
     oscillator.type = type;
     setAudioParameter(oscillator.frequency, freq);
-    // oscillator.frequency.value = parseFloat(freq);
+    if (wave) {
+      const table = await InterpreterFunctions.createPeriodicTable(ctx, wave);
+      oscillator.setPeriodicWave(table);
+    }
     oscillator.start();
-    initialOscillator = oscillator;  //todo: super ugly
     return oscillator;
   }
 
+  static async createPeriodicTable(ctx, wave) {
+    if (wave.type === "_url") {
+      const file = await fetch(wave.value);
+      const data = await file.json();
+      return ctx.createPeriodicWave(data.real, data.imag);
+    }
+    if (!(wave instanceof Array))
+      throw new SyntaxError("Semantics: A periodic wavetable must be an array of numbers");
+    const real = wave[0].map(num => parseFloat(num.value));
+    const imag = wave[1] ? wave[1].map(num => parseFloat(num.value)) : new Float32Array(real.length);
+    return ctx.createPeriodicWave(real, imag);
+  }
 
   static lowpass(ctx, freq, q, detune) {
     return InterpreterFunctions.makeFilter(ctx, "lowpass", {freq, q, detune});
@@ -166,10 +165,10 @@ class InterpreterFunctions {
     return InterpreterFunctions.makeFilter(ctx, "allpass", {freq, q, detune});
   }
 
-  static makeFilter(audioContext, type, p) {
+  static makeFilter(ctx, type, p) {
     //todo factory vs constructor: https://developer.mozilla.org/en-US/docs/Web/API/AudioNode#Creating_an_AudioNode
     //todo the problem is that this is difficult to do if the parameter is an audio envelope represented as an array.
-    const filterNode = audioContext.createBiquadFilter();
+    const filterNode = ctx.createBiquadFilter();
     filterNode.type = type;
     setAudioParameter(filterNode.frequency, p.freq);
     setAudioParameter(filterNode.Q, p.q);
@@ -178,131 +177,34 @@ class InterpreterFunctions {
     return filterNode;
   }
 
-  static async url(audioCtx, url) {
-    const data = await AudioFileRegister.getFileBuffer(url);
-    const bufferSource = audioCtx.createBufferSource();
-    bufferSource.buffer = await audioCtx.decodeAudioData(data);
+  /**
+   * url(https://some.com/sound.file) plays the sound file once
+   * url(https://some.com/sound.file, 1) plays the sound file in a loop
+   */
+  static async url(ctx, url, loop) {
+    const data = await AudioFileRegister.getFileBuffer(url.value);
+    const bufferSource = ctx.createBufferSource();
+    bufferSource.buffer = await ctx.decodeAudioData(data);
+    bufferSource.loop = !!loop;
     bufferSource.start();
     return bufferSource;
   }
 
-  static async noise(audioCtx) {
-    const noise = audioCtx.createBufferSource();
+  static async noise(ctx) {
+    const noise = ctx.createBufferSource();
     noise.buffer = AudioFileRegister.noise();
     noise.loop = true;
     noise.start();
     return noise;
   }
-
-// added by Max
+  //Added by Max
   static async wave(audioCtx, frequency, gain) {
     let lfoOsc = audioCtx.createOscillator();
     const lfoGain = audioCtx.createGain();
     setAudioParameter(lfoOsc.frequency, frequency);
     setAudioParameter(lfoGain.gain, gain);
-    // let count = 128;
-    // let sharkFinValues = new Array(count);
-    // for (let i = 0; i < count; i++) {
-    //   sharkFinValues[i] = setPeriodicWave(i / count);
-    // }
-    // let ft = new DFT(sharkFinValues.length);
-    // ft.forward(sharkFinValues);
-    // lfoOsc.setPeriodicWave(audioCtx.createPeriodicWave(ft.real, ft.imag));
     lfoOsc.connect(lfoGain);
     lfoGain.connect(initialOscillator.frequency);
     lfoOsc.start();
-    // here we should not return neither lfoOsc nor lfoGain, because
   }
-}
-
-class CssAudioInterpreterContext {
-
-  static connectMtoN(m, n) {
-    if (m && n)
-      for (let a of m) {
-        for (let b of n) {
-          if (!a instanceof AudioNode)
-            throw new SyntaxError("CssAudioNode cannot be: " + a);
-          if (!b instanceof AudioNode)
-            throw new SyntaxError("CssAudioNode cannot be: " + b);
-          a.connect(b);
-          //todo calling start inside all source nodes now, as the ctx passed in is suspended before being populated.
-          // let inputs = b.inputs || (b.inputs = []);
-          // inputs.push(a);
-        }
-      }
-  }
-
-  static async interpretPipe(ctx, pipe) {
-    const nodes = [];
-    if (!pipe.nodes)
-      return;
-    for (let node of pipe.nodes) {
-      node = await CssAudioInterpreterContext.interpretNode(ctx, node);
-      node = node instanceof Array ? node : [node];
-      //added by Max
-      if (node[0])
-        nodes.push(node);
-    }
-    for (let i = 0; i < nodes.length - 1; i++)
-      CssAudioInterpreterContext.connectMtoN(nodes[i], nodes[i + 1]);
-    return nodes.pop();
-  }
-
-  /**
-   * todo 0. Reuse the propcessing. To do that we need to analyze it into an ArrayBuffer. That can be reused.
-   * todo    But, to convert it into an ArrayBuffer, we need to know when the sound is off.. To know that, we either
-   * todo    need to have a "off(endtime)", or analyze a "gain()" expression, in the main pipe, verify that no source
-   * todo    nodes are added after it, and check if it ends with 0 (which only can be done in an envelope or a fixed
-   * todo    value), and then calculate the duration of the gain with sound. then summarize the duration of that gain.
-   * todo
-   * todo max. can we use offlineAudioCtx to make an ArrayBuffer of a sound, to make it faster to play back?
-   * todo a. make this recursive instead? first pipe, then array, then node, then argument? but I don't need argument, as it has already been processed?
-   *
-   * @param node
-   * @returns {Promise.<*>}
-   */
-  static async interpretNode(ctx, node) {
-    if (node.type === "pipe")
-      return await CssAudioInterpreterContext.interpretPipe(ctx, node);
-    if (node instanceof Array) {
-      const res = [];
-      for (let item of node) {
-        item = await CssAudioInterpreterContext.interpretNode(ctx, item);
-        res.push(item);
-      }
-      return res;
-    }
-    if (node.type === "fun") {
-      const args = [];
-      for (let item of node.args) {
-        item = await CssAudioInterpreterContext.interpretNode(ctx, item);
-        args.push(item);
-      }
-      return await CssAudioInterpreterContext.makeNode(ctx, node.name, args);
-    }
-    if (node.hasOwnProperty("num")) {
-      return node;
-    }
-    if (typeof node === "string")
-      return await CssAudioInterpreterContext.makeNode(ctx, node);
-    throw new Error("omg? wtf? " + node)
-  }
-
-  static async makeNode(ctx, name, args) {
-    if (!InterpreterFunctions[name])
-      return name;
-    if (!args)
-      return await InterpreterFunctions[name](ctx);
-    return await InterpreterFunctions[name](ctx, ...args);
-  }
-}
-
-export async function interpret(str) {
-  const ast = parse(str);
-  const ctx = new AudioContext();
-  ctx.suspend();
-  let audioNodes = await CssAudioInterpreterContext.interpretPipe(ctx, ast);
-  CssAudioInterpreterContext.connectMtoN(audioNodes, [ctx.destination]);
-  return ctx;
 }
